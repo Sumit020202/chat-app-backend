@@ -5,7 +5,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: "https://chat-app-frontend-one.vercel.app" }));
 app.use(express.json());
 
 // --- 1. डेटाबेस कनेक्शन (यहाँ आपका URL है) ---
