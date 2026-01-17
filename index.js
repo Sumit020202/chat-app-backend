@@ -12,8 +12,8 @@ app.use(express.json());
 const DB_URL = 'mongodb+srv://letscodewithsumit_db_user:jr3WLGtApWqqsE8c@cluster0.cplf2lu.mongodb.net/chatApp?appName=Cluster0';
 
 mongoose.connect(DB_URL)
-  .then(() => console.log("MongoDB Connected Successfully... ✅"))
-  .catch((err) => console.error("MongoDB connection error: ❌", err.message));
+  .then(() => console.log("MongoDB Connected Successfully... "))
+  .catch((err) => console.error("MongoDB connection error: ", err.message));
 
 // --- 2. मैसेज स्कीमा और मॉडल ---
 const messageSchema = new mongoose.Schema({
@@ -84,5 +84,5 @@ app.get("/messages/:room", async (req, res) => {
 });
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}... 🚀`);
+  console.log(`Server is running on port ${PORT}... `);
 });
