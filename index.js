@@ -5,37 +5,98 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 
 const app = express();
-app.use(cors()); // इसे खुला रखें
+
+// CORS सेटअप - सभी ओरिजिन के लिए खुला रखा है ताकि Vercel से जुड़ सके
+app.use(cors({
+  origin: "https://chat-app-frontend-topaz-mu.vercel.app", // आपका सटीक Vercel URL
+  methods: ["GET", "POST"],
+  credentials: true
+}));
 app.use(express.json());
 
-app.get("/", (req, res) => { res.send("Server is Live! "); });
+// होम रूट - ताकि 'Cannot GET /' एरर न आए
+app.get("/", (req, res) => {
+  res.send("Server is Live!  Chat App 2026 is Running.");
+});
 
+// --- 1. MongoDB कनेक्शन ---
 const DB_URL = 'mongodb+srv://letscodewithsumit_db_user:jr3WLGtApWqqsE8c@cluster0.cplf2lu.mongodb.net/chatApp?appName=Cluster0';
-mongoose.connect(DB_URL).then(() => console.log("DB OK")).catch(err => console.log(err));
 
-const Message = mongoose.model('Message', new mongoose.Schema({
-  room: String, author: String, message: String, time: String
-}));
+mongoose.connect(DB_URL)
+  .then(() => console.log("MongoDB Connected Successfully... "))
+  .catch((err) => console.error("MongoDB connection error: ", err.message));
+
+// --- 2. मैसेज स्कीमा और मॉडल ---
+const messageSchema = new mongoose.Schema({
+  room: String,
+  author: String,
+  message: String,
+  senderId: String,
+  time: String
+});
+
+const Message = mongoose.model('Message', messageSchema);
 
 const httpServer = http.createServer(app);
+
+// --- 3. Socket.io सेटअप ---
 const io = new Server(httpServer, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
-  transports: ['websocket', 'polling']
+  cors: {
+    origin: "https://chat-app-frontend-topaz-mu.vercel.app",
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'] // स्टेबिलिटी के लिए दोनों ज़रूरी हैं
 });
 
 io.on("connection", (socket) => {
-  socket.on("join_room", (data) => socket.join(data));
+  console.log(`User Connected: ${socket.id}`);
+
+  socket.on("join_room", (data) => {
+    socket.join(data);
+    console.log(`User ID: ${socket.id} joined room: ${data}`);
+  });
+
+  // टाइपिंग इंडिकेटर लॉजिक
+  socket.on("typing", (data) => {
+    socket.to(data.room).emit("display_typing", data.typing);
+  });
+
   socket.on("send_message", async (data) => {
-    const msg = new Message(data);
-    await msg.save();
-    socket.to(data.room).emit("receive_message", data);
+    const messageData = {
+      ...data,
+      senderId: socket.id,
+      // समय को सर्वर साइड पर ही सेट करना बेहतर है
+      time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    try {
+      const msg = new Message(messageData);
+      await msg.save();
+      // भेजने वाले को छोड़कर बाकी सबको रूम में मैसेज भेजें
+      socket.to(data.room).emit("receive_message", messageData);
+    } catch (error) {
+      console.error("Message Save Error:", error);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User Disconnected", socket.id);
   });
 });
 
+// --- 4. पुराने मैसेज लोड करने के लिए API ---
 app.get("/messages/:room", async (req, res) => {
-  const messages = await Message.find({ room: req.params.room });
-  res.json(messages);
+  try {
+    const messages = await Message.find({ room: req.params.room }).sort({ _id: 1 });
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: "मैसेज लोड नहीं हो पाए" });
+  }
 });
 
+// --- 5. पोर्ट सेटअप (Render के लिए '0.0.0.0' बाइंडिंग जरूरी है) ---
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, '0.0.0.0', () => console.log(`Running on ${PORT}`));
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}... `);
+});
