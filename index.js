@@ -6,9 +6,21 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// CORS सेटअप - सभी ओरिजिन के लिए खुला रखा है ताकि Vercel से जुड़ सके
+// 2026 Best Practice: Multiple origins allow करना
+const allowedOrigins = [
+  "https://chat-app-frontend-topaz-mu.vercel.app",
+  "https://chat-app-frontend-git-main-sumit020202s-projects.vercel.app"
+];
+
 app.use(cors({
-  origin: "https://chat-app-frontend-topaz-mu.vercel.app", // आपका सटीक Vercel URL
+  origin: function (origin, callback) {
+    // अगर origin लिस्ट में है या origin नहीं है (जैसे mobile apps/postman)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS Policy: This origin is not allowed'));
+    }
+  },
   methods: ["GET", "POST"],
   credentials: true
 }));
@@ -42,7 +54,7 @@ const httpServer = http.createServer(app);
 // --- 3. Socket.io सेटअप ---
 const io = new Server(httpServer, {
   cors: {
-    origin: "https://chat-app-frontend-topaz-mu.vercel.app",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true
   },
