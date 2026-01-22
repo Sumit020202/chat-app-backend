@@ -6,22 +6,10 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// 2026 Best Practice: Multiple origins allow करना
-const allowedOrigins = [
-  "https://chat-app-frontend-topaz-mu.vercel.app",
-  "https://chat-app-frontend-git-main-sumit020202s-projects.vercel.app"
-];
-
+// 1. Express CORS (API Requests के लिए जैसे /messages)
 app.use(cors({
-  origin: function (origin, callback) {
-    // अगर origin लिस्ट में है या origin नहीं है (जैसे mobile apps/postman)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS Policy: This origin is not allowed'));
-    }
-  },
-  methods: ["GET", "POST"],
+  origin: "*", // यह किसी भी वेबसाइट से डेटा मंगाने की अनुमति देगा
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 app.use(express.json());
@@ -51,14 +39,14 @@ const Message = mongoose.model('Message', messageSchema);
 
 const httpServer = http.createServer(app);
 
-// --- 3. Socket.io सेटअप ---
+// 2. Socket.io CORS (Real-time मैसेजिंग के लिए)
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*", // यहाँ भी "*" कर दें ताकि कोई भी नया Vercel लिंक चले
     methods: ["GET", "POST"],
     credentials: true
   },
-  transports: ['websocket', 'polling'] // स्टेबिलिटी के लिए दोनों ज़रूरी हैं
+  transports: ['websocket', 'polling']
 });
 
 io.on("connection", (socket) => {
